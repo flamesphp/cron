@@ -2,7 +2,9 @@
 
 namespace Flames\Cron\Kernel;
 
+use Flames\Docker\Docker;
 use Flames\Env\Env;
+use Flames\Framework\Cache;
 use Flames\Observer\App as ObserverApp;
 use Flames\Observer\App\Register as ObserverRegister;
 
@@ -32,9 +34,10 @@ class Boot
 
     protected static function runInBackground(string $module): void
     {
-        $php   = PHP_BINARY;
-        $forge = ROOT_PATH . 'forge';
-        exec($php . ' ' . escapeshellarg($forge) . ' --cron --' . $module . ' >> /proc/1/fd/1 2>> /proc/1/fd/2 &');
+        $php    = PHP_BINARY;
+        $forge  = ROOT_PATH . 'forge';
+        $output = Docker::isDocker() ? '>> /proc/1/fd/1 2>> /proc/1/fd/2' : '> /dev/null 2>&1';
+        exec($php . ' ' . $forge . ' --cron --' . $module . ' ' . $output . ' &');
     }
 
     protected static function observerAppChange(): void
@@ -53,8 +56,32 @@ class Boot
         }
 
         ObserverApp::setPaths($paths);
+        ObserverApp::setCachePath(self::observerCacheDir());
+
         ObserverRegister::change(function (string $hash): void {
-            \Flames\Ready\Ready\Service\Supervisor::reloadWorkers();
-        }, 59);
+            self::onChange($hash);
+        });
+    }
+
+    protected static function onChange(string $hash): void
+    {
+        \Flames\Ready\Ready\Service\Supervisor::reloadWorkers();
+    }
+
+    protected static function observerCacheDir(): string
+    {
+        $cachePath = (string) Env::get('CACHE_PATH');
+
+        if ($cachePath === '') {
+            return rtrim(Cache::getPath(), '/') . '/observer/app/';
+        }
+
+        if (str_starts_with($cachePath, '/') || str_starts_with($cachePath, '~')) {
+            $base = $cachePath;
+        } else {
+            $base = ROOT_PATH . ltrim($cachePath, './');
+        }
+
+        return rtrim($base, '/') . '/observer/app/';
     }
 }

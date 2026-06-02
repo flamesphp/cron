@@ -1,0 +1,9 @@
+{
+  "name": "flamesphp/cron",
+  "description": "Flames: Cron",
+  "type": "library",
+  "license": "MIT",
+  "require": {
+    "php": ">=8.5"
+  }
+}

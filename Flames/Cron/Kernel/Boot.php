@@ -65,23 +65,21 @@ class Boot
 
     protected static function onChange(string $hash): void
     {
-        \Flames\Ready\Ready\Service\Supervisor::reloadWorkers();
+        if (!class_exists(\Flames\Ready\Ready\Service\Supervisor::class)) {
+            fwrite(STDERR, "[Flames Observer] Ready supervisor unavailable – change detected (hash={$hash}), worker reload skipped.\n");
+
+            return;
+        }
+
+        $reloaded = \Flames\Ready\Ready\Service\Supervisor::reloadWorkers();
+
+        if ($reloaded === false) {
+            fwrite(STDERR, "[Flames Observer] Ready supervisor not running – worker reload skipped.\n");
+        }
     }
 
     protected static function observerCacheDir(): string
     {
-        $cachePath = (string) Env::get('CACHE_PATH');
-
-        if ($cachePath === '') {
-            return rtrim(Cache::getPath(), '/') . '/observer/app/';
-        }
-
-        if (str_starts_with($cachePath, '/') || str_starts_with($cachePath, '~')) {
-            $base = $cachePath;
-        } else {
-            $base = ROOT_PATH . ltrim($cachePath, './');
-        }
-
-        return rtrim($base, '/') . '/observer/app/';
+        return rtrim(Cache::getPath(), '/') . '/observer/app/';
     }
 }

@@ -5,7 +5,7 @@ namespace Flames\Cron\Kernel;
 use Flames\Docker\Docker;
 use Flames\Env\Env;
 use Flames\Framework\Cache;
-use Flames\Observer\App as ObserverApp;
+use Flames\Observer\App\Project as ObserverProject;
 use Flames\Observer\App\Register as ObserverRegister;
 
 class Boot
@@ -42,21 +42,11 @@ class Boot
 
     protected static function observerAppChange(): void
     {
-        ObserverApp::setRoot(ROOT_PATH);
-
-        $paths = [
-            ROOT_PATH . '.env',
-            ROOT_PATH . 'App',
-            ROOT_PATH . 'Microservice',
-            ROOT_PATH . 'public'
-        ];
-
-        if (Env::get('FLAMES_DEVELOPER')) {
-            $paths[] = (ROOT_PATH . 'vendor/flamesphp');
-        }
-
-        ObserverApp::setPaths($paths);
-        ObserverApp::setCachePath(self::observerCacheDir());
+        ObserverProject::configure(
+            ROOT_PATH,
+            self::observerCacheDir(),
+            Env::get('FLAMES_DEVELOPER') === true,
+        );
 
         ObserverRegister::change(function (string $hash): void {
             self::onChange($hash);
